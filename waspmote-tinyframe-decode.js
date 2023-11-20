@@ -1,55 +1,68 @@
-function decodeUplink(input) {
- 
-  var TEMP = [input.bytes[3], input.bytes[4], input.bytes[5], input.bytes[6]];//134
+const frameBytes = [
+  139, 29, 52, 88, 130, 94, 108, 20, 65, 133, 245, 81, 58, 70, 132, 212, 40,
+  146, 66, 135, 177, 102, 250, 66, 134, 225, 23, 176, 65,
+];
 
-  var PH_CALC = [
-    input.bytes[8],
-    input.bytes[9],
-    input.bytes[10],
-    input.bytes[11],
-  ];//130
- var EC=[
-    input.bytes[13],
-    input.bytes[14],
-    input.bytes[15],
-    input.bytes[16],
-  ]//133
+const sensorIds = [132, 133, 134, 130];
+const sensors = {
+  134: "Temperature",
+  130: "PH_CALC",
+  133: "EC",
+  132: "DO",
+};
+const thingsSpeak = {
+  Temperature: "field1",
+  PH_CALC: "field2",
+  EC: "field3",
+  DO: "field4",
+};
 
- var DO=[
-    input.bytes[18],
-    input.bytes[19],
-    input.bytes[20],
-    input.bytes[21],
-  ]//132
+function arrayBytesToDouble(array) {
+  // Create a buffer
+  var buf = new ArrayBuffer(4);
+  // Create a data view of it
+  var view = new DataView(buf);
 
-  function arrayBytesToDouble(array) {
-    // Create a buffer
-    var buf = new ArrayBuffer(4);
-    // Create a data view of it
-    var view = new DataView(buf);
+  // set bytes
+  array.forEach(function (b, i) {
+    view.setUint8(i, b);
+  });
 
-    // set bytes
-    array.forEach(function (b, i) {
-      view.setUint8(i, b);
-    });
-
-    var num = view.getFloat32(0, true);
-    return num;
-  }
-
-  return {
-    data: {
-      main: input,
-      temp: arrayBytesToDouble(TEMP),
-      pH: arrayBytesToDouble(PH_CALC),
-      ec:arrayBytesToDouble(EC),
-      dO:arrayBytesToDouble(DO),
-      field1:arrayBytesToDouble(TEMP),
-      field2:arrayBytesToDouble(PH_CALC),
-      field3:arrayBytesToDouble(EC),
-      field4:arrayBytesToDouble(DO)
-      
-    },
-  };
+  var num = view.getFloat32(0, true);
+  return num;
 }
 
+function getSensorValues(frameBytes, sensorIds) {
+  const sensorValues = {};
+
+  for (let i = 4; i < frameBytes.length; i += 5) {
+    const sensorId = frameBytes[i];
+
+    if (i + 4 < frameBytes.length) {
+      const valueBytes = frameBytes.slice(i + 1, i + 5);
+      const sensorValue = arrayBytesToDouble(valueBytes);
+
+      if (sensorIds.includes(sensorId)) {
+        sensorValues[sensors[sensorId]] = sensorValue;
+      }
+    }
+  }
+
+  return sensorValues;
+}
+
+function getThingSpeakValues(sensorValues) {
+  const thingsSpeakValues = {};
+
+  for (const sensorName in sensorValues) {
+    const sensorValue = sensorValues[sensorName];
+    const thingsSpeakField = thingsSpeak[sensorName];
+
+    thingsSpeakValues[thingsSpeakField] = sensorValue;
+  }
+
+  return thingsSpeakValues;
+}
+
+const sensorValues = getSensorValues(frameBytes, sensorIds);
+const thingsSpeakValues = getThingSpeakValues(sensorValues);
