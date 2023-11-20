@@ -1,22 +1,3 @@
-const frameBytes = [
-  139, 29, 52, 88, 130, 94, 108, 20, 65, 133, 245, 81, 58, 70, 132, 212, 40,
-  146, 66, 135, 177, 102, 250, 66, 134, 225, 23, 176, 65,
-];
-
-const sensorIds = [132, 133, 134, 130];
-const sensors = {
-  134: "Temperature",
-  130: "PH_CALC",
-  133: "EC",
-  132: "DO",
-};
-const thingsSpeak = {
-  Temperature: "field1",
-  PH_CALC: "field2",
-  EC: "field3",
-  DO: "field4",
-};
-
 function arrayBytesToDouble(array) {
   // Create a buffer
   var buf = new ArrayBuffer(4);
@@ -33,6 +14,12 @@ function arrayBytesToDouble(array) {
 }
 
 function getSensorValues(frameBytes, sensorIds) {
+  const sensors = {
+    134: "Temperature",
+    130: "PH_CALC",
+    133: "EC",
+    132: "DO",
+  };
   const sensorValues = {};
 
   for (let i = 4; i < frameBytes.length; i += 5) {
@@ -51,7 +38,13 @@ function getSensorValues(frameBytes, sensorIds) {
   return sensorValues;
 }
 
-function getThingSpeakValues(sensorValues) {
+function getThingsSpeakValues(sensorValues) {
+  const thingsSpeak = {
+    Temperature: "field1",
+    PH_CALC: "field2",
+    EC: "field3",
+    DO: "field4",
+  };
   const thingsSpeakValues = {};
 
   for (const sensorName in sensorValues) {
@@ -60,9 +53,21 @@ function getThingSpeakValues(sensorValues) {
 
     thingsSpeakValues[thingsSpeakField] = sensorValue;
   }
-
   return thingsSpeakValues;
 }
 
-const sensorValues = getSensorValues(frameBytes, sensorIds);
-const thingsSpeakValues = getThingSpeakValues(sensorValues);
+function decodeUplink(input) {
+  const frameBytes = input.bytes;
+  const sensorIds = [132, 133, 134, 130];
+
+  const sensorValues = getSensorValues(frameBytes, sensorIds);
+  const thinksSpeakValues = getThingsSpeakValues(sensorValues);
+
+  return {
+    data: {
+      main: input,
+      ...sensorValues,
+      ...thinksSpeakValues,
+    },
+  };
+}
